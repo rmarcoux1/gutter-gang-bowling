@@ -1,0 +1,7 @@
+node_modules/
+dist/
+build/
+cdk.out/
+.env
+*.log
+.DS_Store
