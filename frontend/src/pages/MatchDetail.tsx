@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api, Match, Player, StringResult } from "../api";
+import { api, Fill, Match, Payment, Player, StringResult } from "../api";
 import { fireConfetti } from "../lib/confetti";
+import { useCountUp } from "../hooks/useCountUp";
 import BowlingHero from "../components/BowlingHero";
 import BowlingLoader from "../components/BowlingLoader";
+import SeasonSelect from "../components/SeasonSelect";
 
 const STRINGS: (1 | 2 | 3)[] = [1, 2, 3];
 
@@ -15,6 +17,7 @@ const emptyForm = {
   spares: "",
   tens: "",
   orangePinsLeft: "",
+  amountPaid: "",
 };
 
 export default function MatchDetail() {
@@ -22,23 +25,35 @@ export default function MatchDetail() {
   const navigate = useNavigate();
   const [match, setMatch] = useState<Match | null>(null);
   const [results, setResults] = useState<StringResult[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [fills, setFills] = useState<Fill[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
 
   const [editing, setEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ date: "", opponent: "", week: "" });
+  const [editForm, setEditForm] = useState({ date: "", opponent: "", week: "", season: "" });
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingResultKey, setConfirmingResultKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const [confirmingPaymentKey, setConfirmingPaymentKey] = useState<string | null>(null);
+
+  const [fillPlayerId, setFillPlayerId] = useState("");
+  const [fillStringNumber, setFillStringNumber] = useState<1 | 2 | 3>(1);
+  const [fillType, setFillType] = useState<"strike" | "spare">("strike");
+  const [fillPins, setFillPins] = useState("");
+  const [confirmingFillKey, setConfirmingFillKey] = useState<string | null>(null);
 
   function load() {
     if (!matchId) return;
     api
       .getMatch(matchId)
-      .then(({ match, results }) => {
+      .then(({ match, results, payments, fills }) => {
         setMatch(match);
         setResults(results as StringResult[]);
+        setPayments((payments ?? []) as Payment[]);
+        setFills((fills ?? []) as Fill[]);
       })
       .catch((e) => setError(String(e)));
   }
@@ -49,7 +64,7 @@ export default function MatchDetail() {
   }, []);
   useEffect(() => {
     if (match) {
-      setEditForm({ date: match.date, opponent: match.opponent, week: String(match.week) });
+      setEditForm({ date: match.date, opponent: match.opponent, week: String(match.week), season: match.season });
     }
   }, [match]);
 
@@ -62,6 +77,7 @@ export default function MatchDetail() {
         date: editForm.date,
         opponent: editForm.opponent,
         week: Number(editForm.week),
+        season: editForm.season,
       });
       setEditing(false);
       load();
@@ -115,6 +131,13 @@ export default function MatchDetail() {
       orangePinsLeft: Number(form.orangePinsLeft),
     });
 
+    // Amount paid is per bowler per week, not per string — only log it when
+    // this submission actually has a value, so logging strings 2 and 3 for
+    // someone who already paid on string 1 doesn't need it re-entered.
+    if (form.amountPaid !== "") {
+      await api.submitPayment(matchId, form.playerId, Number(form.amountPaid));
+    }
+
     // Celebrate a strike or a ten getting logged.
     if (strikes > 0 || tens > 0) {
       fireConfetti();
@@ -122,6 +145,47 @@ export default function MatchDetail() {
 
     setForm({ ...emptyForm, playerId: form.playerId, stringNumber: form.stringNumber });
     load();
+  }
+
+  async function handleDeletePayment(playerId: string) {
+    if (!matchId) return;
+    setBusy(true);
+    try {
+      await api.deletePayment(matchId, playerId);
+      setConfirmingPaymentKey(null);
+      load();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSubmitFill(e: React.FormEvent) {
+    e.preventDefault();
+    if (!matchId || !fillPlayerId || fillPins === "") return;
+    await api.submitFill(matchId, {
+      playerId: fillPlayerId,
+      stringNumber: fillStringNumber,
+      fillType,
+      pins: Number(fillPins),
+    });
+    setFillPins("");
+    load();
+  }
+
+  async function handleDeleteFill(playerId: string, fillId: string) {
+    if (!matchId) return;
+    setBusy(true);
+    try {
+      await api.deleteFill(matchId, playerId, fillId);
+      setConfirmingFillKey(null);
+      load();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
   }
 
   const playerName = (id: string) => players.find((p) => p.playerId === id)?.name ?? id;
@@ -133,6 +197,14 @@ export default function MatchDetail() {
     (a, b) => a.playerId.localeCompare(b.playerId) || a.stringNumber - b.stringNumber
   );
 
+  // Week-level totals across every bowler logged so far for this match.
+  const weekTotals = {
+    totalPaid: payments.reduce((sum, p) => sum + p.amountPaid, 0),
+    totalStrikes: results.reduce((sum, r) => sum + r.strikes, 0),
+    totalSpares: results.reduce((sum, r) => sum + r.spares, 0),
+    totalOrangePinsLeft: results.reduce((sum, r) => sum + r.orangePinsLeft, 0),
+  };
+
   return (
     <div>
       <BowlingHero title={`Week ${match.week}`} subtitle={`vs ${match.opponent}`} compact />
@@ -140,6 +212,12 @@ export default function MatchDetail() {
       {editing ? (
         <form className="card" onSubmit={handleSaveEdit}>
           <h2>✏️ Edit match</h2>
+          <SeasonSelect
+            value={editForm.season}
+            onChange={(s) => setEditForm({ ...editForm, season: s ?? "" })}
+            allowCareer={false}
+            label="Season"
+          />
           <div className="form-row">
             <label>
               Week
@@ -182,7 +260,7 @@ export default function MatchDetail() {
       ) : (
         <div className="page-title-row" style={{ marginTop: "-0.75rem" }}>
           <p className="muted" style={{ margin: 0 }}>
-            {match.date}
+            {match.date} · {match.season}
           </p>
           <div className="button-row">
             <button type="button" className="ghost-button" onClick={() => setEditing(true)}>
@@ -214,6 +292,15 @@ export default function MatchDetail() {
               Cancel
             </button>
           </div>
+        </div>
+      )}
+
+      {results.length > 0 && (
+        <div className="stat-grid" style={{ marginTop: "0.5rem", marginBottom: "1.75rem" }}>
+          <Stat label="Total paid" value={weekTotals.totalPaid} decimals={2} prefix="$" />
+          <Stat label="Total strikes" value={weekTotals.totalStrikes} />
+          <Stat label="Total spares" value={weekTotals.totalSpares} />
+          <Stat label="Total orange pins" value={weekTotals.totalOrangePinsLeft} />
         </div>
       )}
 
@@ -302,8 +389,22 @@ export default function MatchDetail() {
               required
             />
           </label>
+          <label>
+            Amount paid ($)
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="optional"
+              value={form.amountPaid}
+              onChange={(e) => setForm({ ...form, amountPaid: e.target.value })}
+            />
+          </label>
         </div>
         <button type="submit">Save result 🎉</button>
+        <p className="muted" style={{ marginTop: "0.6rem", marginBottom: 0 }}>
+          Amount paid is per bowler per week — only fill it in once, on any string. Logging it again overwrites the amount.
+        </p>
       </form>
 
       <h2 style={{ marginTop: "2rem" }}>Results so far</h2>
@@ -380,6 +481,224 @@ export default function MatchDetail() {
           </table>
         </div>
       )}
+
+      <h2 style={{ marginTop: "2rem" }}>Payments so far</h2>
+
+      {payments.length === 0 ? (
+        <p className="empty-state">No payments logged yet for this match.</p>
+      ) : (
+        <div className="table-wrap">
+          <table className="results-table">
+            <thead>
+              <tr>
+                <th>Bowler</th>
+                <th>Amount paid</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...payments]
+                .sort((a, b) => playerName(a.playerId).localeCompare(playerName(b.playerId)))
+                .map((p) => {
+                  const confirming = confirmingPaymentKey === p.playerId;
+                  return (
+                    <tr key={p.playerId}>
+                      <td>{playerName(p.playerId)}</td>
+                      <td>
+                        <strong>${p.amountPaid.toFixed(2)}</strong>
+                      </td>
+                      <td>
+                        {confirming ? (
+                          <span className="row-confirm">
+                            <button
+                              type="button"
+                              className="danger-button row-action"
+                              disabled={busy}
+                              onClick={() => handleDeletePayment(p.playerId)}
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              type="button"
+                              className="ghost-button row-action"
+                              disabled={busy}
+                              onClick={() => setConfirmingPaymentKey(null)}
+                            >
+                              Cancel
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="ghost-button row-action"
+                            onClick={() => setConfirmingPaymentKey(p.playerId)}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <form className="card" onSubmit={handleSubmitFill} style={{ marginTop: "2rem" }}>
+        <h2>🎯 Log a fill</h2>
+        <div className="form-row">
+          <label>
+            Bowler
+            <select
+              value={fillPlayerId}
+              onChange={(e) => setFillPlayerId(e.target.value)}
+              required
+            >
+              <option value="" disabled>
+                Select…
+              </option>
+              {players.map((p) => (
+                <option key={p.playerId} value={p.playerId}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            String
+            <select
+              value={fillStringNumber}
+              onChange={(e) => setFillStringNumber(Number(e.target.value) as 1 | 2 | 3)}
+            >
+              {STRINGS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            After a
+            <select value={fillType} onChange={(e) => setFillType(e.target.value as "strike" | "spare")}>
+              <option value="strike">Strike</option>
+              <option value="spare">Spare</option>
+            </select>
+          </label>
+          <label>
+            Pins on the fill
+            <input
+              type="number"
+              min={0}
+              max={fillType === "spare" ? 10 : undefined}
+              value={fillPins}
+              onChange={(e) => setFillPins(e.target.value)}
+              required
+            />
+          </label>
+        </div>
+        <button type="submit">Save fill</button>
+        <p className="muted" style={{ marginTop: "0.6rem", marginBottom: 0 }}>
+          Log one fill per mark — two strikes in a string means two strike fills.
+        </p>
+      </form>
+
+      <h2 style={{ marginTop: "2rem" }}>Fills so far</h2>
+
+      {fills.length === 0 ? (
+        <p className="empty-state">No fills logged yet for this match.</p>
+      ) : (
+        <div className="table-wrap">
+          <table className="results-table">
+            <thead>
+              <tr>
+                <th>Bowler</th>
+                <th>String</th>
+                <th>After a</th>
+                <th>Pins</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...fills]
+                .sort(
+                  (a, b) =>
+                    playerName(a.playerId).localeCompare(playerName(b.playerId)) || a.stringNumber - b.stringNumber
+                )
+                .map((f) => {
+                  const confirming = confirmingFillKey === f.fillId;
+                  return (
+                    <tr key={f.fillId}>
+                      <td>{playerName(f.playerId)}</td>
+                      <td>{f.stringNumber}</td>
+                      <td>
+                        <span className={`badge ${f.fillType}`}>
+                          {f.fillType === "strike" ? "🔥 Strike" : "／ Spare"}
+                        </span>
+                      </td>
+                      <td>
+                        <strong>{f.pins}</strong>
+                      </td>
+                      <td>
+                        {confirming ? (
+                          <span className="row-confirm">
+                            <button
+                              type="button"
+                              className="danger-button row-action"
+                              disabled={busy}
+                              onClick={() => handleDeleteFill(f.playerId, f.fillId)}
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              type="button"
+                              className="ghost-button row-action"
+                              disabled={busy}
+                              onClick={() => setConfirmingFillKey(null)}
+                            >
+                              Cancel
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="ghost-button row-action"
+                            onClick={() => setConfirmingFillKey(f.fillId)}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  decimals = 0,
+  prefix = "",
+}: {
+  label: string;
+  value: number;
+  decimals?: number;
+  prefix?: string;
+}) {
+  const animated = useCountUp(value);
+  return (
+    <div className="stat-tile">
+      <div className="stat-value">
+        {prefix}
+        {animated.toFixed(decimals)}
+      </div>
+      <div className="stat-label">{label}</div>
     </div>
   );
 }

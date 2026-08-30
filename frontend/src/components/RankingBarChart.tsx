@@ -10,6 +10,7 @@ interface RankingBarChartProps {
   title: string;
   items: RankingItem[];
   valueSuffix?: string;
+  valuePrefix?: string;
 }
 
 const WIDTH = 640;
@@ -18,7 +19,7 @@ const BAR_H = 20; // <= 24px per mark spec
 const LEFT_LABEL_W = 120;
 const PAD = { top: 10, right: 48, bottom: 10 };
 
-export default function RankingBarChart({ title, items, valueSuffix = "" }: RankingBarChartProps) {
+export default function RankingBarChart({ title, items, valueSuffix = "", valuePrefix = "" }: RankingBarChartProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [tableView, setTableView] = useState(false);
 
@@ -63,6 +64,7 @@ export default function RankingBarChart({ title, items, valueSuffix = "" }: Rank
                   <td>{i + 1}</td>
                   <td>{item.label}</td>
                   <td>
+                    {valuePrefix}
                     {item.value}
                     {valueSuffix}
                   </td>
@@ -122,6 +124,7 @@ export default function RankingBarChart({ title, items, valueSuffix = "" }: Rank
                   fontWeight={700}
                   fill={CHART_CHROME.secondaryInk}
                 >
+                  {valuePrefix}
                   {item.value}
                   {valueSuffix}
                 </text>

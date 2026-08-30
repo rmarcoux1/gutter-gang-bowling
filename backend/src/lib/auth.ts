@@ -7,7 +7,7 @@ import type { APIGatewayProxyEventV2 } from "aws-lambda";
  * team tool that isn't meant to be publicly writable.
  *
  * Swap this for Cognito or API Gateway native API keys later if you need
- * per-user auth or usage tracking.dsff
+ * per-user auth or usage tracking.
  */
 export function isAuthorized(event: APIGatewayProxyEventV2): boolean {
   const expected = process.env.API_KEY_SECRET;

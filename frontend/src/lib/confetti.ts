@@ -14,7 +14,9 @@ interface Particle {
   shape: "square" | "pin";
 }
 
-const COLORS = ["#f97316", "#2563eb", "#22c55e", "#eab308", "#ec4899", "#7c3aed"];
+// Bold/saturated so particles still pop against the light page background —
+// the near-white swatch from the dark-theme version would have washed out.
+const COLORS = ["#2563eb", "#0ea5e9", "#22d3ee", "#6366f1", "#7c3aed", "#101b33"];
 
 // A tiny bowling-pin silhouette, drawn around the origin, used for a portion
 // of the confetti particles so the celebration reads as "bowling", not just
@@ -30,6 +32,11 @@ function drawPin(ctx: CanvasRenderingContext2D, size: number) {
   ctx.bezierCurveTo(-w / 2, -h / 6, -w / 2, -h / 2, 0, -h / 2);
   ctx.closePath();
   ctx.fill();
+  // A thin navy outline so the (near-white) pin body stays visible against
+  // the light page background, not just against a dark one.
+  ctx.strokeStyle = "rgba(16, 27, 51, 0.35)";
+  ctx.lineWidth = 0.6;
+  ctx.stroke();
 }
 
 export function fireConfetti(originX = 0.5, originY = 0.3) {

@@ -1,37 +1,47 @@
 :root {
   color-scheme: light;
 
-  --bg: #f3f5fb;
+  /* Light theme, blue accents (third pass — the first two attempts were
+     dark and kept reading as too dark no matter how much we lightened the
+     dark palette, so this drops color-scheme back to light entirely). Page
+     chrome, cards, and body are bright; blue carries the accent/brand color
+     in the header, buttons, links, and highlights. The bowling hero banner
+     keeps its own contained dark/neon illustration (see BowlingHero.tsx) —
+     that's a small, deliberately moody graphic sitting on a light page, the
+     same way a photo hero banner would, not the page's base theme. */
+  --bg: #f2f6fd;
   --surface: #ffffff;
-  --surface-alt: #eef1f9;
-  --border: #e2e6f0;
-  --text: #10151f;
-  --text-muted: #626b7d;
+  --surface-alt: #eaf1fc;
+  --border: #d7e3f7;
+  --text: #101b33;
+  --text-muted: #5b6b8c;
 
-  --navy: #0b1220;
-  --navy-2: #131c30;
+  --navy: #0f1f4a;
+  --navy-2: #1c4494;
 
   --blue: #2563eb;
   --blue-dark: #1d4ed8;
-  --orange: #f97316;
-  --orange-dark: #ea580c;
-  --green: #16a34a;
+  --orange: #6366f1;
+  --orange-dark: #4f46e5;
+  --green: #059669;
   --purple: #7c3aed;
-  --pink: #ec4899;
+  --pink: #0ea5e9;
 
-  --gradient-hero: linear-gradient(135deg, #0b1220 0%, #131c30 55%, #1d2b4a 100%);
-  --gradient-accent: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-  --gradient-warm: linear-gradient(135deg, #f97316 0%, #ec4899 100%);
+  --gradient-hero: linear-gradient(135deg, #0f1f4a 0%, #1c4494 55%, #2f5fd6 100%);
+  --gradient-accent: linear-gradient(135deg, #2563eb 0%, #22d3ee 100%);
+  --gradient-warm: linear-gradient(135deg, #6366f1 0%, #a78bfa 100%);
 
-  --shadow-sm: 0 1px 2px rgba(16, 21, 31, 0.06);
-  --shadow-md: 0 8px 24px rgba(16, 21, 31, 0.08);
-  --shadow-lg: 0 16px 40px rgba(16, 21, 31, 0.14);
+  --shadow-sm: 0 1px 2px rgba(16, 27, 51, 0.06);
+  --shadow-md: 0 8px 24px rgba(16, 27, 51, 0.09);
+  --shadow-lg: 0 16px 40px rgba(16, 27, 51, 0.15);
+  --glow-blue: 0 0 0 3px rgba(37, 99, 235, 0.15);
 
   --radius: 16px;
   --radius-sm: 10px;
 
-  --font-body: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  --font-display: "Sora", "Inter", system-ui, sans-serif;
+  --font-body: "Space Grotesk", "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font-display: "Bungee", "Space Grotesk", system-ui, sans-serif;
+  --font-marquee: "Monoton", var(--font-display);
 }
 
 * {
@@ -43,18 +53,13 @@ body {
   color: var(--text);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
-  /* Faint lane-board planking behind every page — subtle enough to stay out
-     of the way of the cards sitting on top of it. */
   background-color: var(--bg);
+  /* Soft blue wash behind the cards — much quieter than the neon-grid
+     backdrop from the dark pass, just enough to keep the page from feeling
+     flat white. */
   background-image:
-    repeating-linear-gradient(
-      90deg,
-      rgba(11, 18, 32, 0.025) 0px,
-      rgba(11, 18, 32, 0.025) 1px,
-      transparent 1px,
-      transparent 42px
-    ),
-    radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.06), transparent 55%);
+    radial-gradient(ellipse 60% 40% at 15% -10%, rgba(37, 99, 235, 0.08), transparent 60%),
+    radial-gradient(ellipse 55% 35% at 90% 0%, rgba(99, 102, 241, 0.07), transparent 60%);
   background-attachment: fixed;
 }
 
@@ -84,23 +89,23 @@ h3 {
 .app-header .brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
   color: white;
   text-decoration: none;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
 }
 
 .brand .brand-emoji {
   font-size: 1.4rem;
-  filter: drop-shadow(0 0 8px rgba(249, 115, 22, 0.6));
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.6));
 }
 
 .app-header nav {
   display: flex;
   gap: 0.35rem;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   padding: 0.3rem;
   border-radius: 999px;
 }
@@ -109,7 +114,7 @@ h3 {
   color: rgba(255, 255, 255, 0.75);
   text-decoration: none;
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   padding: 0.45rem 0.95rem;
   border-radius: 999px;
   transition: background 0.2s ease, color 0.2s ease;
@@ -117,13 +122,13 @@ h3 {
 
 .app-header nav a:hover {
   color: white;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .app-header nav a.active {
   color: white;
   background: var(--gradient-accent);
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5);
 }
 
 .app-main {
@@ -190,6 +195,9 @@ h3 {
 }
 
 /* ---------- Bowling hero banner ---------- */
+/* Deliberately kept as its own dark/neon illustrated scene (see
+   BowlingHero.tsx) — a contained graphic banner, not the page theme. Reads
+   like a photo hero on an otherwise light site. */
 
 .bowling-hero {
   position: relative;
@@ -222,10 +230,12 @@ h3 {
 
 .bowling-hero-title {
   color: white;
-  font-size: 2.1rem;
-  font-weight: 800;
+  font-family: var(--font-marquee);
+  font-weight: 400;
+  font-size: 2.3rem;
+  letter-spacing: 0.02em;
   margin: 0;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 0 12px rgba(34, 211, 238, 0.85), 0 0 32px rgba(34, 211, 238, 0.5), 0 2px 12px rgba(0, 0, 0, 0.6);
 }
 
 .bowling-hero.compact .bowling-hero-title {
@@ -233,10 +243,10 @@ h3 {
 }
 
 .bowling-hero-subtitle {
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 0.95rem;
-  margin: 0.35rem 0 0;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+  margin: 0.5rem 0 0;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
 }
 
 /* ---------- Loader ---------- */
@@ -275,7 +285,7 @@ h3 {
 }
 
 .card h2 {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text);
   display: flex;
@@ -318,7 +328,7 @@ input:focus,
 select:focus {
   outline: none;
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  box-shadow: var(--glow-blue);
   background: white;
 }
 
@@ -329,9 +339,10 @@ button {
   padding: 0.65rem 1.4rem;
   border-radius: 999px;
   cursor: pointer;
-  font-weight: 700;
-  font-size: 0.92rem;
-  letter-spacing: 0.01em;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
   box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -343,6 +354,12 @@ button:hover {
 
 button:active {
   transform: translateY(0);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* ---------- Lists / match & player cards ---------- */
@@ -387,7 +404,7 @@ button:active {
   justify-content: center;
   font-family: var(--font-display);
   line-height: 1;
-  box-shadow: 0 6px 16px rgba(249, 115, 22, 0.35);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
 }
 
 .week-badge .num {
@@ -424,7 +441,7 @@ button:active {
   justify-content: center;
   font-family: var(--font-display);
   font-weight: 700;
-  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
 }
 
 /* ---------- Stat tiles ---------- */
@@ -486,8 +503,8 @@ button:active {
 
 .stat-value {
   font-family: var(--font-display);
-  font-size: 2rem;
-  font-weight: 800;
+  font-size: 1.8rem;
+  font-weight: 400;
   color: var(--navy);
   font-variant-numeric: tabular-nums;
 }
@@ -520,7 +537,7 @@ button:active {
 }
 
 .chart-card-header h3 {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 700;
   margin: 0;
 }
@@ -659,7 +676,7 @@ button:active {
 }
 
 .badge.strike {
-  background: rgba(249, 115, 22, 0.14);
+  background: rgba(99, 102, 241, 0.12);
   color: var(--orange-dark);
 }
 
@@ -669,7 +686,7 @@ button:active {
 }
 
 .badge.ten {
-  background: rgba(124, 58, 237, 0.14);
+  background: rgba(124, 58, 237, 0.12);
   color: var(--purple);
 }
 
@@ -707,4 +724,106 @@ button:active {
     gap: 0.75rem;
     align-items: flex-start;
   }
+}
+
+/* ---------- Season selector ---------- */
+
+.season-select {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  gap: 0.3rem;
+  margin: 1rem 0 1.25rem;
+  max-width: 340px;
+}
+
+.season-select-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.season-select-row select {
+  flex: 1 1 auto;
+}
+
+.season-add-button {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.season-add-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin: 1rem 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.season-add-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  gap: 0.3rem;
+}
+
+.season-group-heading {
+  margin-top: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.season-group-heading .muted {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.season-group-toggle {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+}
+
+.season-group-toggle:hover {
+  transform: none;
+  box-shadow: none;
+  opacity: 0.85;
+}
+
+.season-group-toggle .chevron {
+  display: inline-block;
+  transition: transform 0.15s ease;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.season-group-toggle .chevron.collapsed {
+  transform: rotate(-90deg);
+}
+
+.danger-text {
+  color: #b91c1c;
+}
+
+.season-delete-button {
+  font-size: 0.78rem;
+  padding: 0.4rem 0.85rem;
 }

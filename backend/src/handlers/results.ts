@@ -50,6 +50,7 @@ async function createResult(matchId: string, event: APIGatewayProxyEventV2): Pro
     orangePinsLeft,
     week: match.week,
     matchDate: match.date,
+    season: match.season,
   };
 
   await ddb.send(

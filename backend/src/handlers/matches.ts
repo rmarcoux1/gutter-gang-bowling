@@ -8,14 +8,19 @@ import type { Match } from "../lib/types.js";
 // POST /matches
 async function createMatch(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
   const body = JSON.parse(event.body ?? "{}");
-  const { date, opponent, week } = body as { date?: string; opponent?: string; week?: number };
+  const { date, opponent, week, season } = body as {
+    date?: string;
+    opponent?: string;
+    week?: number;
+    season?: string;
+  };
 
-  if (!date || !opponent || week === undefined) {
-    return jsonResponse(400, { message: "date, opponent, and week are required" });
+  if (!date || !opponent || week === undefined || !season) {
+    return jsonResponse(400, { message: "date, opponent, week, and season are required" });
   }
 
   const matchId = randomUUID();
-  const match: Match = { matchId, date, opponent, week };
+  const match: Match = { matchId, date, opponent, week, season };
 
   await ddb.send(
     new PutCommand({
@@ -41,7 +46,7 @@ async function listMatches(): Promise<APIGatewayProxyResultV2> {
   return jsonResponse(200, result.Items ?? []);
 }
 
-// GET /matches/{matchId} — metadata + all string results
+// GET /matches/{matchId} — metadata + all string results + all payments + all fills
 async function getMatch(matchId: string): Promise<APIGatewayProxyResultV2> {
   const result = await ddb.send(
     new QueryCommand({
@@ -56,8 +61,12 @@ async function getMatch(matchId: string): Promise<APIGatewayProxyResultV2> {
   if (!metadata) {
     return jsonResponse(404, { message: "Match not found" });
   }
-  const results = items.filter((i) => i.SK !== "METADATA");
-  return jsonResponse(200, { match: metadata, results });
+  const isPayment = (sk: string) => sk.includes("#PAYMENT");
+  const isFill = (sk: string) => sk.includes("#FILL#");
+  const results = items.filter((i) => i.SK !== "METADATA" && !isPayment(i.SK) && !isFill(i.SK));
+  const payments = items.filter((i) => isPayment(i.SK));
+  const fills = items.filter((i) => isFill(i.SK));
+  return jsonResponse(200, { match: metadata, results, payments, fills });
 }
 
 // PUT /matches/{matchId} — partial update of date/opponent/week
@@ -76,6 +85,7 @@ async function updateMatch(matchId: string, event: APIGatewayProxyEventV2): Prom
     date: body.date ?? current.date,
     opponent: body.opponent ?? current.opponent,
     week: body.week ?? current.week,
+    season: body.season ?? current.season,
   };
 
   await ddb.send(
@@ -85,9 +95,10 @@ async function updateMatch(matchId: string, event: APIGatewayProxyEventV2): Prom
     })
   );
 
-  // Results denormalize week/date from the match at write time (see results.ts).
-  // Keep them in sync so weekly/handicap-trend charts don't go stale after an edit.
-  if (body.week !== undefined || body.date !== undefined) {
+  // Results denormalize week/date/season from the match at write time (see
+  // results.ts). Keep them in sync so weekly/handicap-trend charts and
+  // season filtering don't go stale after an edit.
+  if (body.week !== undefined || body.date !== undefined || body.season !== undefined) {
     const existingResults = await ddb.send(
       new QueryCommand({
         TableName: TABLE_NAME,
@@ -100,7 +111,7 @@ async function updateMatch(matchId: string, event: APIGatewayProxyEventV2): Prom
         ddb.send(
           new PutCommand({
             TableName: TABLE_NAME,
-            Item: { ...item, week: updated.week, matchDate: updated.date },
+            Item: { ...item, week: updated.week, matchDate: updated.date, season: updated.season },
           })
         )
       )

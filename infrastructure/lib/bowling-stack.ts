@@ -72,15 +72,38 @@ export class BowlingStack extends Stack {
       ...commonProps,
     });
 
+    const seasonsFn = new nodejs.NodejsFunction(this, "SeasonsFunction", {
+      entry: path.join(backendDir, "seasons.ts"),
+      ...commonProps,
+    });
+
+    const paymentsFn = new nodejs.NodejsFunction(this, "PaymentsFunction", {
+      entry: path.join(backendDir, "payments.ts"),
+      ...commonProps,
+    });
+
+    const fillsFn = new nodejs.NodejsFunction(this, "FillsFunction", {
+      entry: path.join(backendDir, "fills.ts"),
+      ...commonProps,
+    });
+
     table.grantReadWriteData(matchesFn);
     table.grantReadWriteData(resultsFn);
     table.grantReadWriteData(playersFn);
+    table.grantReadWriteData(seasonsFn);
+    table.grantReadWriteData(paymentsFn);
+    table.grantReadWriteData(fillsFn);
 
     // --- HTTP API --------------------------------------------------------
     const httpApi = new apigwv2.HttpApi(this, "BowlingHttpApi", {
       apiName: "gutter-gang-bowling-api",
       corsPreflight: {
-        allowOrigins: ["*"], // tighten to your Amplify domain once it's live
+        allowOrigins: [
+          "https://theguttergang.net",
+          "https://www.theguttergang.net",
+          "http://localhost:5173", // local `npm run dev`
+          // Add your *.amplifyapp.com URL here too if you still use it for testing.
+        ],
         allowMethods: [
           apigwv2.CorsHttpMethod.GET,
           apigwv2.CorsHttpMethod.POST,
@@ -94,6 +117,9 @@ export class BowlingStack extends Stack {
     const matchesIntegration = new integrations.HttpLambdaIntegration("MatchesIntegration", matchesFn);
     const resultsIntegration = new integrations.HttpLambdaIntegration("ResultsIntegration", resultsFn);
     const playersIntegration = new integrations.HttpLambdaIntegration("PlayersIntegration", playersFn);
+    const seasonsIntegration = new integrations.HttpLambdaIntegration("SeasonsIntegration", seasonsFn);
+    const paymentsIntegration = new integrations.HttpLambdaIntegration("PaymentsIntegration", paymentsFn);
+    const fillsIntegration = new integrations.HttpLambdaIntegration("FillsIntegration", fillsFn);
 
     httpApi.addRoutes({ path: "/matches", methods: [apigwv2.HttpMethod.GET, apigwv2.HttpMethod.POST], integration: matchesIntegration });
     httpApi.addRoutes({
@@ -107,6 +133,18 @@ export class BowlingStack extends Stack {
       methods: [apigwv2.HttpMethod.DELETE],
       integration: resultsIntegration,
     });
+    httpApi.addRoutes({ path: "/matches/{matchId}/payments", methods: [apigwv2.HttpMethod.POST], integration: paymentsIntegration });
+    httpApi.addRoutes({
+      path: "/matches/{matchId}/payments/{playerId}",
+      methods: [apigwv2.HttpMethod.DELETE],
+      integration: paymentsIntegration,
+    });
+    httpApi.addRoutes({ path: "/matches/{matchId}/fills", methods: [apigwv2.HttpMethod.POST], integration: fillsIntegration });
+    httpApi.addRoutes({
+      path: "/matches/{matchId}/fills/{playerId}/{fillId}",
+      methods: [apigwv2.HttpMethod.DELETE],
+      integration: fillsIntegration,
+    });
     httpApi.addRoutes({ path: "/players", methods: [apigwv2.HttpMethod.GET, apigwv2.HttpMethod.POST], integration: playersIntegration });
     // Static path — must be registered so it takes precedence over the {playerId} routes below.
     httpApi.addRoutes({ path: "/players/summary", methods: [apigwv2.HttpMethod.GET], integration: playersIntegration });
@@ -117,6 +155,13 @@ export class BowlingStack extends Stack {
       methods: [apigwv2.HttpMethod.PUT, apigwv2.HttpMethod.DELETE],
       integration: playersIntegration,
     });
+
+    // Static path — must be registered before /seasons's generic GET/POST below
+    // isn't strictly needed here (no {seasonId} route), but keep the pattern
+    // consistent with /players/summary for readability.
+    httpApi.addRoutes({ path: "/seasons/current", methods: [apigwv2.HttpMethod.GET], integration: seasonsIntegration });
+    httpApi.addRoutes({ path: "/seasons", methods: [apigwv2.HttpMethod.GET, apigwv2.HttpMethod.POST], integration: seasonsIntegration });
+    httpApi.addRoutes({ path: "/seasons/{seasonId}", methods: [apigwv2.HttpMethod.DELETE], integration: seasonsIntegration });
 
     new CfnOutput(this, "ApiUrl", { value: httpApi.apiEndpoint });
     new CfnOutput(this, "ApiSecretArn", { value: apiSecret.secretArn });
