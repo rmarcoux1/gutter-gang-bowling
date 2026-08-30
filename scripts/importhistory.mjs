@@ -105,11 +105,8 @@ async function main() {
     process.exit(1);
   }
 
-  //const apiUrl = (args.apiUrl ?? process.env.VITE_API_URL ?? "").replace(/\/$/, "");
-  //const apiKey = args.apiKey ?? process.env.VITE_API_KEY;
-
-  const apiUrl = 'https://fmk1gd9yok.execute-api.us-east-1.amazonaws.com'.replace(/\/$/, "");
-  const apiKey = 'djaOk45SU9FmuT1eIhumPOkZgqrH0lCi';
+  const apiUrl = (args.apiUrl ?? process.env.VITE_API_URL ?? "").replace(/\/$/, "");
+  const apiKey = args.apiKey ?? process.env.VITE_API_KEY;
   if (!args.dryRun && (!apiUrl || !apiKey)) {
     console.error("Missing API URL/key. Set VITE_API_URL and VITE_API_KEY, or pass --api-url/--api-key.");
     process.exit(1);
