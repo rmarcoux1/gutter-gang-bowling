@@ -149,7 +149,6 @@ export default function PlayerStats() {
           <div className="stat-grid" style={{ marginTop: "1.25rem" }}>
             <Stat label="Strings played" value={stats.stringsPlayed} />
             <Stat label="Handicap" value={stats.handicap} decimals={1} accent big />
-            <Stat label="Average score" value={stats.averageScore} decimals={1} accent />
             {/* Always the true all-time record, regardless of the season toggle above
                 — see careerHighScoreOf on the backend for why it isn't season-scoped. */}
             <Stat label="🏆 Career high score" value={stats.careerHighScore} accent big />
