@@ -31,7 +31,7 @@ export default function App() {
         </Routes>
       </main>
 
-      <footer className="app-footer">🎳 Strikes, spares, and neon lights — Gutter Gang, under the black lights.</footer>
+      <footer className="app-footer">🎳 Powered by strikes, spares, and the tears from other teams.</footer>
     </div>
   );
 }

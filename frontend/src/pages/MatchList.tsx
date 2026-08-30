@@ -93,7 +93,7 @@ export default function MatchList() {
 
   return (
     <div>
-      <BowlingHero title="Gutter Gang Bowling" subtitle="Every strike, spare, and gutter ball — lit up in neon." />
+      <BowlingHero title="Gutter Gang Bowling" subtitle="Perfection starts with balls." />
 
       <form className="card" onSubmit={handleCreate}>
         <h2>✨ New match</h2>
