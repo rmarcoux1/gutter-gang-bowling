@@ -50,7 +50,18 @@ export class BowlingStack extends Stack {
       memorySize: 256,
       environment: {
         TABLE_NAME: table.tableName,
-        API_KEY_SECRET: apiSecret.secretValue.unsafeUnwrap(), // baked in at deploy time; rotate by redeploying
+        // The ARN, not the value — the Lambda fetches the actual secret
+        // value at runtime (see backend/src/lib/auth.ts). The ARN is stable
+        // across rotations, so this only ever needs a real code/infra
+        // change, never a "just redeploy to pick up the new secret" step.
+        // (Previous approach baked the secret's *value* in directly via
+        // `apiSecret.secretValue.unsafeUnwrap()`, which becomes a
+        // CloudFormation dynamic reference resolved at deploy time — but
+        // rotating the secret doesn't change that reference's literal text,
+        // so CloudFormation could decide there was "nothing to update" and
+        // silently skip pushing the new value into the Lambdas, even with
+        // `cdk deploy --force`. Learned this the hard way.)
+        API_KEY_SECRET_ARN: apiSecret.secretArn,
       },
       projectRoot: backendRoot,
       depsLockFilePath: path.join(backendRoot, "package-lock.json"),
@@ -94,6 +105,16 @@ export class BowlingStack extends Stack {
     table.grantReadWriteData(paymentsFn);
     table.grantReadWriteData(fillsFn);
 
+    // Every function needs to read the current API key value at runtime
+    // (see the comment on API_KEY_SECRET_ARN above for why it's fetched at
+    // runtime instead of baked into the env var).
+    apiSecret.grantRead(matchesFn);
+    apiSecret.grantRead(resultsFn);
+    apiSecret.grantRead(playersFn);
+    apiSecret.grantRead(seasonsFn);
+    apiSecret.grantRead(paymentsFn);
+    apiSecret.grantRead(fillsFn);
+
     // --- HTTP API --------------------------------------------------------
     const httpApi = new apigwv2.HttpApi(this, "BowlingHttpApi", {
       apiName: "gutter-gang-bowling-api",
@@ -134,6 +155,13 @@ export class BowlingStack extends Stack {
       integration: resultsIntegration,
     });
     httpApi.addRoutes({ path: "/matches/{matchId}/payments", methods: [apigwv2.HttpMethod.POST], integration: paymentsIntegration });
+    httpApi.addRoutes({
+      path: "/matches/{matchId}/payments/{playerId}/{stringNumber}",
+      methods: [apigwv2.HttpMethod.DELETE],
+      integration: paymentsIntegration,
+    });
+    // Legacy route — deletes a payment logged before payments were tracked
+    // per-string (no stringNumber). Kept only for cleaning up old rows.
     httpApi.addRoutes({
       path: "/matches/{matchId}/payments/{playerId}",
       methods: [apigwv2.HttpMethod.DELETE],

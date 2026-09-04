@@ -38,12 +38,21 @@ export interface StringResult {
   season?: string;
 }
 
-// One bowler's dues/payment for one match (week). At most one payment item
-// per (matchId, playerId) — resubmitting overwrites the amount, same as how
-// results work per string.
+// One bowler's dues/payment for one string of one match. At most one payment
+// item per (matchId, playerId, stringNumber) — resubmitting the same trio
+// overwrites the amount, same as how results work. Originally this was one
+// payment per (matchId, playerId) — i.e. per week, not per string — but that
+// meant logging an amount on string 2 silently overwrote whatever was
+// logged on string 1, so a week's real total (e.g. side-bet money owed per
+// string) only ever reflected the last string entered. `stringNumber` is
+// optional only so a handful of pre-2026-09 payment rows written before this
+// change (no stringNumber at all) don't break existing reads — they're
+// still included in a player's totalPaid sum, just not attributable to a
+// specific string in the per-match breakdown UI.
 export interface Payment {
   matchId: string;
   playerId: string;
+  stringNumber?: 1 | 2 | 3;
   amountPaid: number;
   week?: number;
   matchDate?: string;

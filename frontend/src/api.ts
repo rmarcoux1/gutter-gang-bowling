@@ -94,6 +94,9 @@ export interface StringResult {
 export interface Payment {
   matchId: string;
   playerId: string;
+  // Optional only for a handful of rows logged before payments were tracked
+  // per string (2026-09) — every new payment always has one.
+  stringNumber?: 1 | 2 | 3;
   amountPaid: number;
   season?: string;
 }
@@ -192,13 +195,18 @@ export const api = {
       method: "DELETE",
     }),
 
-  submitPayment: (matchId: string, playerId: string, amountPaid: number) =>
+  submitPayment: (matchId: string, playerId: string, stringNumber: 1 | 2 | 3, amountPaid: number) =>
     request<Payment>(`/matches/${matchId}/payments`, {
       method: "POST",
-      body: JSON.stringify({ playerId, amountPaid }),
+      body: JSON.stringify({ playerId, stringNumber, amountPaid }),
     }),
-  deletePayment: (matchId: string, playerId: string) =>
-    request<{ deleted: true }>(`/matches/${matchId}/payments/${playerId}`, { method: "DELETE" }),
+  // stringNumber omitted only when deleting a legacy pre-per-string payment
+  // (see the Payment type comment above).
+  deletePayment: (matchId: string, playerId: string, stringNumber?: 1 | 2 | 3) =>
+    request<{ deleted: true }>(
+      `/matches/${matchId}/payments/${playerId}${stringNumber ? `/${stringNumber}` : ""}`,
+      { method: "DELETE" }
+    ),
 
   submitFill: (matchId: string, fill: { playerId: string; stringNumber: 1 | 2 | 3; fillType: "strike" | "spare"; pins: number }) =>
     request<Fill>(`/matches/${matchId}/fills`, {
